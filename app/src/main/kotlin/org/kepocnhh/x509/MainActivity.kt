@@ -20,7 +20,7 @@ internal class MainActivity : ComponentActivity() {
         context: Context,
         injection: Injection,
         root: FrameLayout,
-//        key: PrivateKey,
+        key: PrivateKey,
         crt: Certificate,
     ) {
         root.removeAllViews()
@@ -31,7 +31,6 @@ internal class MainActivity : ComponentActivity() {
                 Gravity.CENTER_VERTICAL,
             )
             view.orientation = LinearLayout.VERTICAL
-            /*
             injection.secrets.sha256(key.encoded).also { hash ->
                 TextView(context).also {
                     it.layoutParams = ViewGroup.LayoutParams(
@@ -53,7 +52,6 @@ internal class MainActivity : ComponentActivity() {
                     view.addView(it)
                 }
             }
-            */
             injection.secrets.sha256(crt.publicKey.encoded).also { hash ->
                 TextView(context).also {
                     it.layoutParams = ViewGroup.LayoutParams(
@@ -192,7 +190,7 @@ internal class MainActivity : ComponentActivity() {
                                 context = context,
                                 injection = injection,
                                 root = root,
-//                                key = key,
+                                key = key,
                                 crt = crt,
                             )
                         },
@@ -218,20 +216,19 @@ internal class MainActivity : ComponentActivity() {
             )
         }
         runCatching {
-//            val alias = injection.locals.alias ?: error("No alias!")
-            val alias = "foo" // todo
-//            val key = injection.dirs.files.resolve("rsa.key").let {
-//                injection.secrets.toPrivateKey(it.readBytes())
-//            }
+            val alias = injection.locals.alias ?: error("No alias!")
+            val key = injection.dirs.files.resolve("rsa.key").let {
+                injection.secrets.toPrivateKey(it.readBytes())
+            }
             val crt = injection.secrets.getCertificate(alias = alias) ?: error("No certificate!")
-            crt
+            key to crt
         }.fold(
-            onSuccess = { crt ->
+            onSuccess = { (key, crt) ->
                 onKeys(
                     context = context,
                     injection = injection,
                     root = root,
-//                    key = key,
+                    key = key,
                     crt = crt,
                 )
             },
