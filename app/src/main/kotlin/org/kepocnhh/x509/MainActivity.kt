@@ -1,6 +1,7 @@
 package org.kepocnhh.x509
 
 import android.content.Context
+import android.graphics.Typeface
 import android.os.Bundle
 import android.view.Gravity
 import android.view.ViewGroup
@@ -21,10 +22,59 @@ internal class MainActivity : ComponentActivity() {
         injection: Injection,
         root: FrameLayout,
         key: PrivateKey,
-        crt: Certificate,
         pub: PublicKey,
     ) {
-
+        LinearLayout(context).also { view ->
+            view.layoutParams = FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                Gravity.CENTER_VERTICAL,
+            )
+            view.orientation = LinearLayout.VERTICAL
+            injection.secrets.sha256(key.encoded).also { hash ->
+                TextView(context).also {
+                    it.layoutParams = ViewGroup.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                    )
+                    it.text = "private key:"
+                    view.addView(it)
+                }
+                TextView(context).also {
+                    it.layoutParams = ViewGroup.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                    )
+                    it.text = hash.joinToString(separator = "") { byte ->
+                        String.format("%02x", byte.toInt().and(0xff))
+                    }
+                    it.typeface = Typeface.MONOSPACE
+                    view.addView(it)
+                }
+            }
+            injection.secrets.sha256(pub.encoded).also { hash ->
+                TextView(context).also {
+                    it.layoutParams = ViewGroup.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                    )
+                    it.text = "public key:"
+                    view.addView(it)
+                }
+                TextView(context).also {
+                    it.layoutParams = ViewGroup.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                    )
+                    it.text = hash.joinToString(separator = "") { byte ->
+                        String.format("%02x", byte.toInt().and(0xff))
+                    }
+                    it.typeface = Typeface.MONOSPACE
+                    view.addView(it)
+                }
+            }
+            root.addView(view)
+        }
     }
 
     private fun noKeys(
@@ -136,6 +186,7 @@ internal class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val context: Context = this
+        val injection = App.injection
         val root = FrameLayout(context).also {
             it.layoutParams = ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -143,36 +194,31 @@ internal class MainActivity : ComponentActivity() {
             )
         }
         runCatching {
-            TODO()
+            val key = injection.dirs.cache.resolve("rsa.key").let {
+                injection.secrets.toPrivateKey(it.readBytes())
+            }
+            val pub = injection.dirs.cache.resolve("rsa.pub").let {
+                injection.secrets.toPublicKey(it.readBytes())
+            }
+            key to pub
         }.fold(
-            onSuccess = { (key, crt, pub) ->
+            onSuccess = { (key, pub) ->
                 onKeys(
                     context = context,
-                    injection = App.injection,
+                    injection = injection,
                     root = root,
                     key = key,
-                    crt = crt,
                     pub = pub,
                 )
             },
             onFailure = {
                 noKeys(
                     context = context,
-                    injection = App.injection,
+                    injection = injection,
                     root = root,
                 )
             },
         )
-        val key = App.injection.dirs.cache.resolve("rsa.key")
-        if (key.exists()) {
-            TODO("MainActivity:onCreate(key: $key)")
-        } else {
-            noKeys(
-                context = context,
-                injection = App.injection,
-                root = root,
-            )
-        }
         setContentView(root)
     }
 
