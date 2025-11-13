@@ -5,4 +5,5 @@ internal class Injection(
     val dirs: Dirs,
     val secrets: Secrets,
     val loggers: Loggers,
+    val locals: Locals,
 )

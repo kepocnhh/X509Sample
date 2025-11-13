@@ -41,4 +41,22 @@ internal class FinalSecrets : Secrets {
         val md = MessageDigest.getInstance("SHA256")
         return md.digest(encoded)
     }
+
+    override fun getCertificate(alias: String): Certificate? {
+        val keyStore = KeyStore.getInstance("AndroidKeyStore")
+        keyStore.load(null)
+        return keyStore.getCertificate(alias)
+    }
+
+    override fun setCertificate(alias: String, crt: Certificate) {
+        val keyStore = KeyStore.getInstance("AndroidKeyStore")
+        keyStore.load(null)
+        keyStore.setCertificateEntry(alias, crt)
+    }
+
+    override fun deleteEntry(alias: String) {
+        val keyStore = KeyStore.getInstance("AndroidKeyStore")
+        keyStore.load(null)
+        keyStore.deleteEntry(alias)
+    }
 }

@@ -20,7 +20,7 @@ internal class MainActivity : ComponentActivity() {
         context: Context,
         injection: Injection,
         root: FrameLayout,
-        key: PrivateKey,
+//        key: PrivateKey,
         crt: Certificate,
     ) {
         root.removeAllViews()
@@ -31,6 +31,7 @@ internal class MainActivity : ComponentActivity() {
                 Gravity.CENTER_VERTICAL,
             )
             view.orientation = LinearLayout.VERTICAL
+            /*
             injection.secrets.sha256(key.encoded).also { hash ->
                 TextView(context).also {
                     it.layoutParams = ViewGroup.LayoutParams(
@@ -52,6 +53,7 @@ internal class MainActivity : ComponentActivity() {
                     view.addView(it)
                 }
             }
+            */
             injection.secrets.sha256(crt.publicKey.encoded).also { hash ->
                 TextView(context).also {
                     it.layoutParams = ViewGroup.LayoutParams(
@@ -81,7 +83,9 @@ internal class MainActivity : ComponentActivity() {
                 it.text = "clear"
                 it.setOnClickListener { _ ->
                     injection.dirs.files.resolve("rsa.key").delete()
-                    injection.dirs.files.resolve("rsa.crt").delete()
+                    val alias = injection.locals.alias ?: error("No alias!")
+                    injection.secrets.deleteEntry(alias = alias)
+                    injection.locals.alias = null
                     noKeys(
                         context = context,
                         injection = injection,
@@ -179,9 +183,8 @@ internal class MainActivity : ComponentActivity() {
                         injection.dirs.files.resolve("rsa.key").also { file ->
                             file.writeBytes(key.encoded)
                         }
-                        injection.dirs.files.resolve("rsa.crt").also { file ->
-                            file.writeBytes(crt.encoded)
-                        }
+                        injection.secrets.setCertificate(alias = alias, crt = crt)
+                        injection.locals.alias = alias
                         key to crt
                     }.fold(
                         onSuccess = { (key, crt) ->
@@ -189,7 +192,7 @@ internal class MainActivity : ComponentActivity() {
                                 context = context,
                                 injection = injection,
                                 root = root,
-                                key = key,
+//                                key = key,
                                 crt = crt,
                             )
                         },
@@ -215,20 +218,20 @@ internal class MainActivity : ComponentActivity() {
             )
         }
         runCatching {
-            val key = injection.dirs.files.resolve("rsa.key").let {
-                injection.secrets.toPrivateKey(it.readBytes())
-            }
-            val crt = injection.dirs.files.resolve("rsa.crt").let {
-                injection.secrets.toCertificate(it.readBytes())
-            }
-            key to crt
+//            val alias = injection.locals.alias ?: error("No alias!")
+            val alias = "foo" // todo
+//            val key = injection.dirs.files.resolve("rsa.key").let {
+//                injection.secrets.toPrivateKey(it.readBytes())
+//            }
+            val crt = injection.secrets.getCertificate(alias = alias) ?: error("No certificate!")
+            crt
         }.fold(
-            onSuccess = { (key, crt) ->
+            onSuccess = { crt ->
                 onKeys(
                     context = context,
                     injection = injection,
                     root = root,
-                    key = key,
+//                    key = key,
                     crt = crt,
                 )
             },
