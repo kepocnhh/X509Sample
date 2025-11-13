@@ -16,6 +16,32 @@ import java.security.PrivateKey
 import java.security.cert.Certificate
 
 internal class MainActivity : ComponentActivity() {
+    private fun ByteArray.hex(): String {
+        return joinToString(separator = "") { byte ->
+            String.format("%02x", byte.toInt().and(0xff))
+        }
+    }
+
+    private fun LinearLayout.text(title: String, value: String, typeface: Typeface = Typeface.DEFAULT) {
+        TextView(context).also {
+            it.layoutParams = ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+            )
+            it.text = title
+            addView(it)
+        }
+        TextView(context).also {
+            it.layoutParams = ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+            )
+            it.text = value
+            it.typeface = typeface
+            addView(it)
+        }
+    }
+
     private fun onKeys(
         context: Context,
         injection: Injection,
@@ -31,48 +57,34 @@ internal class MainActivity : ComponentActivity() {
                 Gravity.CENTER_VERTICAL,
             )
             view.orientation = LinearLayout.VERTICAL
-            injection.secrets.sha256(key.encoded).also { hash ->
-                TextView(context).also {
-                    it.layoutParams = ViewGroup.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        ViewGroup.LayoutParams.WRAP_CONTENT,
-                    )
-                    it.text = "private key:"
-                    view.addView(it)
-                }
-                TextView(context).also {
-                    it.layoutParams = ViewGroup.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        ViewGroup.LayoutParams.WRAP_CONTENT,
-                    )
-                    it.text = hash.joinToString(separator = "") { byte ->
-                        String.format("%02x", byte.toInt().and(0xff))
-                    }
-                    it.typeface = Typeface.MONOSPACE
-                    view.addView(it)
-                }
-            }
-            injection.secrets.sha256(crt.publicKey.encoded).also { hash ->
-                TextView(context).also {
-                    it.layoutParams = ViewGroup.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        ViewGroup.LayoutParams.WRAP_CONTENT,
-                    )
-                    it.text = "public key:"
-                    view.addView(it)
-                }
-                TextView(context).also {
-                    it.layoutParams = ViewGroup.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        ViewGroup.LayoutParams.WRAP_CONTENT,
-                    )
-                    it.text = hash.joinToString(separator = "") { byte ->
-                        String.format("%02x", byte.toInt().and(0xff))
-                    }
-                    it.typeface = Typeface.MONOSPACE
-                    view.addView(it)
-                }
-            }
+            view.text(
+                title = "private key:",
+                value = injection.secrets.sha256(key.encoded).hex(),
+                typeface = Typeface.MONOSPACE,
+            )
+            view.text(
+                title = "public key:",
+                value = injection.secrets.sha256(crt.publicKey.encoded).hex(),
+                typeface = Typeface.MONOSPACE,
+            )
+            val payload = System.currentTimeMillis().toString()
+            view.text(
+                title = "payload:",
+                value = payload,
+            )
+            val encoded = payload.toByteArray()
+            view.text(
+                title = "encoded:",
+                value = injection.secrets.sha256(encoded).hex(),
+                typeface = Typeface.MONOSPACE,
+            )
+            val encrypted = injection.secrets.encrypt(crt = crt, decrypted = encoded)
+            view.text(
+                title = "encrypted:",
+                value = injection.secrets.sha256(encrypted).hex(),
+                typeface = Typeface.MONOSPACE,
+            )
+            //
             Button(context).also {
                 it.layoutParams = ViewGroup.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,

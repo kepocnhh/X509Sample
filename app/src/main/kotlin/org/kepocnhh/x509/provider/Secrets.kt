@@ -11,4 +11,6 @@ internal interface Secrets {
     fun setCertificate(alias: String, crt: Certificate)
     fun getCertificate(alias: String): Certificate?
     fun deleteEntry(alias: String)
+    fun encrypt(crt: Certificate, decrypted: ByteArray): ByteArray
+    fun decrypt(key: PrivateKey, encrypted: ByteArray): ByteArray
 }

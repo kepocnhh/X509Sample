@@ -6,6 +6,7 @@ import java.security.MessageDigest
 import java.security.PrivateKey
 import java.security.cert.Certificate
 import java.security.spec.PKCS8EncodedKeySpec
+import javax.crypto.Cipher
 
 internal class FinalSecrets : Secrets {
     override fun toKeyStore(
@@ -44,5 +45,17 @@ internal class FinalSecrets : Secrets {
         val keyStore = KeyStore.getInstance("AndroidKeyStore")
         keyStore.load(null)
         keyStore.deleteEntry(alias)
+    }
+
+    override fun encrypt(crt: Certificate, decrypted: ByteArray): ByteArray {
+        val cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding")
+        cipher.init(Cipher.ENCRYPT_MODE, crt.publicKey)
+        return cipher.doFinal(decrypted)
+    }
+
+    override fun decrypt(key: PrivateKey, encrypted: ByteArray): ByteArray {
+        val cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding")
+        cipher.init(Cipher.DECRYPT_MODE, key)
+        return cipher.doFinal(encrypted)
     }
 }
