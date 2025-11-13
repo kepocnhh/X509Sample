@@ -78,11 +78,28 @@ internal class MainActivity : ComponentActivity() {
                 value = injection.secrets.sha256(encoded).hex(),
                 typeface = Typeface.MONOSPACE,
             )
-            val encrypted = injection.secrets.encrypt(crt = crt, decrypted = encoded)
+            val signature = injection.secrets.sign(key = key, encoded = encoded)
+            view.text(
+                title = "signature:",
+                value = injection.secrets.sha256(signature).hex(),
+                typeface = Typeface.MONOSPACE,
+            )
+            val encrypted = injection.secrets.encrypt(key = crt.publicKey, decrypted = encoded)
             view.text(
                 title = "encrypted:",
                 value = injection.secrets.sha256(encrypted).hex(),
                 typeface = Typeface.MONOSPACE,
+            )
+            val decrypted = injection.secrets.decrypt(key = key, encrypted = encrypted)
+            view.text(
+                title = "decrypted:",
+                value = injection.secrets.sha256(decrypted).hex(),
+                typeface = Typeface.MONOSPACE,
+            )
+            check(injection.secrets.verify(key = crt.publicKey, encoded = decrypted, signature = signature))
+            view.text(
+                title = "decoded:",
+                value = String(decrypted),
             )
             //
             Button(context).also {
