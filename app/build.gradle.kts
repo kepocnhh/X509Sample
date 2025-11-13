@@ -17,7 +17,7 @@ android {
     defaultConfig {
         applicationId = namespace
         minSdk = 24
-        targetSdk = 35
+        targetSdk = compileSdk
         versionCode = 1
         versionName = "0.0.$versionCode"
     }
@@ -28,10 +28,29 @@ android {
             versionNameSuffix = "-$name"
             isMinifyEnabled = false
             isShrinkResources = false
+            manifestPlaceholders["buildType"] = name
         }
     }
 
     buildFeatures.buildConfig = true
+
+    productFlavors {
+        mapOf(
+            "specifics" to setOf("mock"),
+        ).forEach { (dimension, names) ->
+            flavorDimensions += dimension
+            names.forEach { name ->
+                create(name) {
+                    this.dimension = dimension
+                    applicationIdSuffix = ".$name"
+                    versionNameSuffix = "-$name"
+                }
+            }
+        }
+        create("real") {
+            this.dimension = "specifics"
+        }
+    }
 }
 
 androidComponents.onVariants { variant ->
