@@ -3,6 +3,9 @@ package org.kepocnhh.x509
 import android.app.Application
 import android.content.Context
 import org.kepocnhh.x509.provider.FinalAssets
+import org.kepocnhh.x509.provider.FinalDirs
+import org.kepocnhh.x509.provider.FinalLoggers
+import org.kepocnhh.x509.provider.FinalSecrets
 import org.kepocnhh.x509.provider.Injection
 
 internal class App : Application() {
@@ -11,6 +14,9 @@ internal class App : Application() {
         val context: Context = this
         _injection = Injection(
             assets = FinalAssets(context = context),
+            dirs = FinalDirs(context = context),
+            secrets = FinalSecrets(),
+            loggers = FinalLoggers,
         )
     }
 
