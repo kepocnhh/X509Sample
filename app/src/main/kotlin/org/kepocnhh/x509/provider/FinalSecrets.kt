@@ -5,8 +5,10 @@ import java.security.KeyStore
 import java.security.MessageDigest
 import java.security.PrivateKey
 import java.security.PublicKey
+import java.security.cert.CertificateFactory
 import java.security.spec.PKCS8EncodedKeySpec
 import java.security.spec.X509EncodedKeySpec
+import java.security.cert.Certificate
 
 internal class FinalSecrets : Secrets {
     override fun toKeyStore(
@@ -28,6 +30,11 @@ internal class FinalSecrets : Secrets {
         val keyFactory = KeyFactory.getInstance("RSA")
         val keySpec = PKCS8EncodedKeySpec(encoded)
         return keyFactory.generatePrivate(keySpec)
+    }
+
+    override fun toCertificate(encoded: ByteArray): Certificate {
+        val factory = CertificateFactory.getInstance("X509")
+        return factory.generateCertificate(encoded.inputStream())
     }
 
     override fun sha256(encoded: ByteArray): ByteArray {

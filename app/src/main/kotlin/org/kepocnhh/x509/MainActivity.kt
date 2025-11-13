@@ -13,8 +13,7 @@ import android.widget.TextView
 import androidx.activity.ComponentActivity
 import org.kepocnhh.x509.provider.Injection
 import java.security.PrivateKey
-import java.security.PublicKey
-import javax.security.cert.Certificate
+import java.security.cert.Certificate
 
 internal class MainActivity : ComponentActivity() {
     private fun onKeys(
@@ -22,8 +21,9 @@ internal class MainActivity : ComponentActivity() {
         injection: Injection,
         root: FrameLayout,
         key: PrivateKey,
-        pub: PublicKey,
+        crt: Certificate,
     ) {
+        root.removeAllViews()
         LinearLayout(context).also { view ->
             view.layoutParams = FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -52,7 +52,7 @@ internal class MainActivity : ComponentActivity() {
                     view.addView(it)
                 }
             }
-            injection.secrets.sha256(pub.encoded).also { hash ->
+            injection.secrets.sha256(crt.publicKey.encoded).also { hash ->
                 TextView(context).also {
                     it.layoutParams = ViewGroup.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
@@ -73,6 +73,23 @@ internal class MainActivity : ComponentActivity() {
                     view.addView(it)
                 }
             }
+            Button(context).also {
+                it.layoutParams = ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                )
+                it.text = "clear"
+                it.setOnClickListener { _ ->
+                    injection.dirs.files.resolve("rsa.key").delete()
+                    injection.dirs.files.resolve("rsa.crt").delete()
+                    noKeys(
+                        context = context,
+                        injection = injection,
+                        root = root,
+                    )
+                }
+                view.addView(it)
+            }
             root.addView(view)
         }
     }
@@ -82,6 +99,7 @@ internal class MainActivity : ComponentActivity() {
         injection: Injection,
         root: FrameLayout,
     ) {
+        root.removeAllViews()
         LinearLayout(context).also { view ->
             view.layoutParams = FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -158,22 +176,25 @@ internal class MainActivity : ComponentActivity() {
                         val key = keyStore.getKey(alias, password) ?: error("No key!")
                         check(key is PrivateKey)
                         val crt = keyStore.getCertificate(alias) ?: error("No crt!")
-                        val pub = crt.publicKey
-                        injection.dirs.cache.resolve("rsa.key").also { file ->
+                        injection.dirs.files.resolve("rsa.key").also { file ->
                             file.writeBytes(key.encoded)
                         }
-                        injection.dirs.cache.resolve("rsa.crt").also { file ->
+                        injection.dirs.files.resolve("rsa.crt").also { file ->
                             file.writeBytes(crt.encoded)
                         }
-                        injection.dirs.cache.resolve("rsa.pub").also { file ->
-                            file.writeBytes(pub.encoded)
-                        }
+                        key to crt
                     }.fold(
-                        onSuccess = {
-                            // todo
+                        onSuccess = { (key, crt) ->
+                            onKeys(
+                                context = context,
+                                injection = injection,
+                                root = root,
+                                key = key,
+                                crt = crt,
+                            )
                         },
                         onFailure = { error ->
-                            logger.warning("Read keystore error: $error")
+                            logger.warning("keystore error: $error")
                         },
                     )
                 }
@@ -194,24 +215,25 @@ internal class MainActivity : ComponentActivity() {
             )
         }
         runCatching {
-            val key = injection.dirs.cache.resolve("rsa.key").let {
+            val key = injection.dirs.files.resolve("rsa.key").let {
                 injection.secrets.toPrivateKey(it.readBytes())
             }
-            val pub = injection.dirs.cache.resolve("rsa.pub").let {
-                injection.secrets.toPublicKey(it.readBytes())
+            val crt = injection.dirs.files.resolve("rsa.crt").let {
+                injection.secrets.toCertificate(it.readBytes())
             }
-            key to pub
+            key to crt
         }.fold(
-            onSuccess = { (key, pub) ->
+            onSuccess = { (key, crt) ->
                 onKeys(
                     context = context,
                     injection = injection,
                     root = root,
                     key = key,
-                    pub = pub,
+                    crt = crt,
                 )
             },
-            onFailure = {
+            onFailure = { error ->
+                logger.warning("read error: $error")
                 noKeys(
                     context = context,
                     injection = injection,
