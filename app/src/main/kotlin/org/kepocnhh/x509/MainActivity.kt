@@ -22,7 +22,7 @@ internal class MainActivity : ComponentActivity() {
     private class State(
         val key: PrivateKey,
         val csr: PKCS10CertificationRequest,
-        val certificate: Certificate,
+        val crt: Certificate,
     )
 
     private fun ByteArray.hex(): String {
@@ -75,12 +75,62 @@ internal class MainActivity : ComponentActivity() {
                 value = injection.secrets.sha256(state.csr.encoded).hex(),
                 typeface = Typeface.MONOSPACE,
             )
+            check(state.crt is X509Certificate)
+            check(state.crt.notBefore.before(Date()))
+            check(state.crt.notAfter.after(Date()))
             view.text(
                 title = "certificate:",
-                value = injection.secrets.sha256(state.certificate.encoded).hex(),
+                value = injection.secrets.sha256(state.crt.encoded).hex(),
                 typeface = Typeface.MONOSPACE,
             )
-            // todo
+            view.text(
+                title = "not before:",
+                value = state.crt.notBefore.toString(),
+            )
+            view.text(
+                title = "not after:",
+                value = state.crt.notAfter.toString(),
+            )
+            view.text(
+                title = "public key:",
+                value = injection.secrets.sha256(state.crt.publicKey.encoded).hex(),
+                typeface = Typeface.MONOSPACE,
+            )
+            //
+            val payload = System.currentTimeMillis().toString()
+            view.text(
+                title = "payload:",
+                value = payload,
+            )
+            val encoded = payload.toByteArray()
+            view.text(
+                title = "encoded:",
+                value = injection.secrets.sha256(encoded).hex(),
+                typeface = Typeface.MONOSPACE,
+            )
+            val signature = injection.secrets.sign(key = state.key, encoded = encoded)
+            view.text(
+                title = "signature:",
+                value = injection.secrets.sha256(signature).hex(),
+                typeface = Typeface.MONOSPACE,
+            )
+            val encrypted = injection.secrets.encrypt(key = state.crt.publicKey, decrypted = encoded)
+            view.text(
+                title = "encrypted:",
+                value = injection.secrets.sha256(encrypted).hex(),
+                typeface = Typeface.MONOSPACE,
+            )
+            val decrypted = injection.secrets.decrypt(key = state.key, encrypted = encrypted)
+            view.text(
+                title = "decrypted:",
+                value = injection.secrets.sha256(decrypted).hex(),
+                typeface = Typeface.MONOSPACE,
+            )
+            check(injection.secrets.verify(key = state.crt.publicKey, encoded = decrypted, signature = signature))
+            view.text(
+                title = "decoded:",
+                value = String(decrypted),
+            )
             Button(context).also {
                 it.layoutParams = ViewGroup.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
@@ -129,6 +179,7 @@ internal class MainActivity : ComponentActivity() {
             check(crt is X509Certificate)
             check(crt.notBefore.before(Date()))
             check(crt.notAfter.after(Date()))
+            check(injection.secrets.verify(key = crt.publicKey, encoded = crt.encoded, signature = crt.signature))
             view.text(
                 title = "not before:",
                 value = crt.notBefore.toString(),
@@ -220,9 +271,9 @@ internal class MainActivity : ComponentActivity() {
                     injection.dirs.files.resolve("csr.der").also { file ->
                         file.writeBytes(csr.encoded)
                     }
-                    val certificate = injection.secrets.certificate(request = csr, key = keyPair.private)
-                    injection.dirs.files.resolve("certificate.der").also { file ->
-                        file.writeBytes(certificate.encoded)
+                    val crt = injection.secrets.certificate(request = csr, key = keyPair.private)
+                    injection.dirs.files.resolve("crt.der").also { file ->
+                        file.writeBytes(crt.encoded)
                     }
                     onKeys(
                         context = context,
@@ -231,7 +282,7 @@ internal class MainActivity : ComponentActivity() {
                         state = State(
                             key = keyPair.private,
                             csr = csr,
-                            certificate = certificate,
+                            crt = crt,
                         ),
                     )
                 }
@@ -259,7 +310,7 @@ internal class MainActivity : ComponentActivity() {
                 csr = injection.dirs.files.resolve("csr.der").let {
                     injection.secrets.toCSR(it.readBytes())
                 },
-                certificate = injection.dirs.files.resolve("certificate.der").let {
+                crt = injection.dirs.files.resolve("crt.der").let {
                     injection.secrets.toCertificate(it.readBytes())
                 },
             )

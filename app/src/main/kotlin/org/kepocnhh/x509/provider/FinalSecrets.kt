@@ -36,7 +36,8 @@ internal class FinalSecrets(
 //        error("version: ${Security.getProvider(provider.name)?.version}")
 //        val providers = Security.getProviders()
 //        val message = providers.joinToString(separator = "\n")
-        val algorithms = Security.getAlgorithms("Signature")
+//        val algorithms = Security.getAlgorithms("Signature")
+        val algorithms = Security.getAlgorithms("Cipher")
         val message = algorithms.joinToString(separator = "\n")
 //        error(message)
     }
@@ -99,7 +100,7 @@ internal class FinalSecrets(
 
     override fun encrypt(key: PublicKey, decrypted: ByteArray): ByteArray {
 //        val transformation = "RSA/ECB/PKCS1Padding"
-        val transformation = TODO("EC")
+        val transformation = "ECIES"
         val cipher = Cipher.getInstance(transformation, provider)
         cipher.init(Cipher.ENCRYPT_MODE, key)
         return cipher.doFinal(decrypted)
@@ -107,15 +108,14 @@ internal class FinalSecrets(
 
     override fun decrypt(key: PrivateKey, encrypted: ByteArray): ByteArray {
 //        val transformation = "RSA/ECB/PKCS1Padding"
-        val transformation = TODO("EC")
+        val transformation = "ECIES"
         val cipher = Cipher.getInstance(transformation, provider)
         cipher.init(Cipher.DECRYPT_MODE, key)
         return cipher.doFinal(encrypted)
     }
 
     override fun sign(key: PrivateKey, encoded: ByteArray): ByteArray {
-//        val algorithm = "SHA256withRSA"
-        val algorithm = TODO("EC")
+        val algorithm = "SHA256WITHECDSA"
         val sig = Signature.getInstance(algorithm, provider)
         sig.initSign(key)
         sig.update(encoded)
@@ -123,8 +123,7 @@ internal class FinalSecrets(
     }
 
     override fun verify(key: PublicKey, encoded: ByteArray, signature: ByteArray): Boolean {
-//        val algorithm = "SHA256withRSA"
-        val algorithm = TODO("EC")
+        val algorithm = "SHA256WITHECDSA"
         val sig = Signature.getInstance(algorithm, provider)
         sig.initVerify(key)
         sig.update(encoded)
