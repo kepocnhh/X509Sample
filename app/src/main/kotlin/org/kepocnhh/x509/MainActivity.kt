@@ -11,6 +11,7 @@ import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.activity.ComponentActivity
+import org.bouncycastle.pkcs.PKCS10CertificationRequest
 import org.kepocnhh.x509.provider.Injection
 import java.security.PrivateKey
 import java.security.cert.Certificate
@@ -18,6 +19,12 @@ import java.security.cert.X509Certificate
 import java.util.Date
 
 internal class MainActivity : ComponentActivity() {
+    private class State(
+        val key: PrivateKey,
+        val csr: PKCS10CertificationRequest,
+        val certificate: Certificate,
+    )
+
     private fun ByteArray.hex(): String {
         return joinToString(separator = "") { byte ->
             String.format("%02x", byte.toInt().and(0xff))
@@ -41,6 +48,56 @@ internal class MainActivity : ComponentActivity() {
             it.text = value
             it.typeface = typeface
             addView(it)
+        }
+    }
+
+    private fun onKeys(
+        context: Context,
+        injection: Injection,
+        root: FrameLayout,
+        state: State,
+    ) {
+        root.removeAllViews()
+        LinearLayout(context).also { view ->
+            view.layoutParams = FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                Gravity.CENTER_VERTICAL,
+            )
+            view.orientation = LinearLayout.VERTICAL
+            view.text(
+                title = "private key:",
+                value = injection.secrets.sha256(state.key.encoded).hex(),
+                typeface = Typeface.MONOSPACE,
+            )
+            view.text(
+                title = "csr:",
+                value = injection.secrets.sha256(state.csr.encoded).hex(),
+                typeface = Typeface.MONOSPACE,
+            )
+            view.text(
+                title = "certificate:",
+                value = injection.secrets.sha256(state.certificate.encoded).hex(),
+                typeface = Typeface.MONOSPACE,
+            )
+            // todo
+            Button(context).also {
+                it.layoutParams = ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                )
+                it.text = "clear"
+                it.setOnClickListener { _ ->
+                    injection.dirs.files.resolve("key.der").delete()
+                    noKeys(
+                        context = context,
+                        injection = injection,
+                        root = root,
+                    )
+                }
+                view.addView(it)
+            }
+            root.addView(view)
         }
     }
 
@@ -123,9 +180,6 @@ internal class MainActivity : ComponentActivity() {
                 it.text = "clear"
                 it.setOnClickListener { _ ->
                     injection.dirs.files.resolve("rsa.key").delete()
-                    val alias = injection.locals.alias ?: error("No alias!")
-                    injection.secrets.deleteEntry(alias = alias)
-                    injection.locals.alias = null
                     noKeys(
                         context = context,
                         injection = injection,
@@ -151,94 +205,34 @@ internal class MainActivity : ComponentActivity() {
                 Gravity.CENTER_VERTICAL,
             )
             view.orientation = LinearLayout.VERTICAL
-            TextView(context).also {
-                it.layoutParams = ViewGroup.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                )
-                it.text = "name"
-                view.addView(it)
-            }
-            val names = EditText(context).also {
-                it.layoutParams = ViewGroup.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                )
-                it.setText("foo.p12")
-                view.addView(it)
-            }
-            TextView(context).also {
-                it.layoutParams = ViewGroup.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                )
-                it.text = "alias"
-                view.addView(it)
-            }
-            val aliases = EditText(context).also {
-                it.layoutParams = ViewGroup.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                )
-                it.setText("foo")
-                view.addView(it)
-            }
-            TextView(context).also {
-                it.layoutParams = ViewGroup.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                )
-                it.text = "password"
-                view.addView(it)
-            }
-            val passwords = EditText(context).also {
-                it.layoutParams = ViewGroup.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                )
-                it.setText("qwe123")
-                view.addView(it)
-            }
             Button(context).also {
                 it.layoutParams = ViewGroup.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.WRAP_CONTENT,
                 )
-                it.text = "open"
+                it.text = "generate"
                 it.setOnClickListener { _ ->
-                    runCatching {
-                        val name = names.text?.toString() ?: error("No name!")
-                        val alias = aliases.text?.toString() ?: error("No alias!")
-                        val encoded = injection.assets.getAsset(name = name).use { stream ->
-                            stream.readBytes()
-                        }
-                        val password = passwords.text?.toString().orEmpty().toCharArray()
-                        val keyStore = injection.secrets.toKeyStore(
-                            encoded = encoded,
-                            password = password,
-                        )
-                        val key = keyStore.getKey(alias, password) ?: error("No key!")
-                        check(key is PrivateKey)
-                        val crt = keyStore.getCertificate(alias) ?: error("No crt!")
-                        injection.dirs.files.resolve("rsa.key").also { file ->
-                            file.writeBytes(key.encoded)
-                        }
-                        injection.secrets.setCertificate(alias = alias, crt = crt)
-                        injection.locals.alias = alias
-                        key to crt
-                    }.fold(
-                        onSuccess = { (key, crt) ->
-                            onKeys(
-                                context = context,
-                                injection = injection,
-                                root = root,
-                                key = key,
-                                crt = crt,
-                            )
-                        },
-                        onFailure = { error ->
-                            logger.warning("keystore error: $error")
-                        },
+                    val keyPair = injection.secrets.newKeyPair()
+                    injection.dirs.files.resolve("key.der").also { file ->
+                        file.writeBytes(keyPair.private.encoded)
+                    }
+                    val csr = injection.secrets.csr(keyPair = keyPair)
+                    injection.dirs.files.resolve("csr.der").also { file ->
+                        file.writeBytes(csr.encoded)
+                    }
+                    val certificate = injection.secrets.certificate(request = csr, key = keyPair.private)
+                    injection.dirs.files.resolve("certificate.der").also { file ->
+                        file.writeBytes(certificate.encoded)
+                    }
+                    onKeys(
+                        context = context,
+                        injection = injection,
+                        root = root,
+                        state = State(
+                            key = keyPair.private,
+                            csr = csr,
+                            certificate = certificate,
+                        ),
                     )
                 }
                 view.addView(it)
@@ -258,20 +252,24 @@ internal class MainActivity : ComponentActivity() {
             )
         }
         runCatching {
-            val alias = injection.locals.alias ?: error("No alias!")
-            val key = injection.dirs.files.resolve("rsa.key").let {
-                injection.secrets.toPrivateKey(it.readBytes())
-            }
-            val crt = injection.secrets.getCertificate(alias = alias) ?: error("No certificate!")
-            key to crt
+            State(
+                key = injection.dirs.files.resolve("key.der").let {
+                    injection.secrets.toPrivateKey(it.readBytes())
+                },
+                csr = injection.dirs.files.resolve("csr.der").let {
+                    injection.secrets.toCSR(it.readBytes())
+                },
+                certificate = injection.dirs.files.resolve("certificate.der").let {
+                    injection.secrets.toCertificate(it.readBytes())
+                },
+            )
         }.fold(
-            onSuccess = { (key, crt) ->
+            onSuccess = { state ->
                 onKeys(
                     context = context,
                     injection = injection,
                     root = root,
-                    key = key,
-                    crt = crt,
+                    state = state,
                 )
             },
             onFailure = { error ->

@@ -2,6 +2,7 @@ package org.kepocnhh.x509
 
 import android.app.Application
 import android.content.Context
+import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.kepocnhh.x509.provider.FinalAssets
 import org.kepocnhh.x509.provider.FinalDirs
 import org.kepocnhh.x509.provider.FinalLocals
@@ -16,7 +17,7 @@ internal class App : Application() {
         _injection = Injection(
             assets = FinalAssets(context = context),
             dirs = FinalDirs(context = context),
-            secrets = FinalSecrets(),
+            secrets = FinalSecrets(provider = BouncyCastleProvider()),
             loggers = FinalLoggers,
             locals = FinalLocals(context = context),
         )

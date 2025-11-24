@@ -51,6 +51,10 @@ android {
             this.dimension = "specifics"
         }
     }
+
+    packaging {
+        resources.excludes.add("META-INF/versions/9/OSGI-INF/MANIFEST.MF") // bouncycastle
+    }
 }
 
 androidComponents.onVariants { variant ->
@@ -74,4 +78,5 @@ androidComponents.onVariants { variant ->
 
 dependencies {
     implementation("androidx.activity:activity:1.10.1")
+    implementation("org.bouncycastle:bcpkix-jdk18on:1.82")
 }

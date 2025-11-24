@@ -1,17 +1,19 @@
 package org.kepocnhh.x509.provider
 
-import java.security.KeyStore
+import org.bouncycastle.pkcs.PKCS10CertificationRequest
+import java.security.KeyPair
 import java.security.PrivateKey
 import java.security.PublicKey
 import java.security.cert.Certificate
 
 internal interface Secrets {
-    fun toKeyStore(encoded: ByteArray, password: CharArray): KeyStore
+    fun newKeyPair(): KeyPair
+    fun csr(keyPair: KeyPair): PKCS10CertificationRequest
+    fun certificate(request: PKCS10CertificationRequest, key: PrivateKey): Certificate
     fun toPrivateKey(encoded: ByteArray): PrivateKey
+    fun toCSR(encoded: ByteArray): PKCS10CertificationRequest
+    fun toCertificate(encoded: ByteArray): Certificate
     fun sha256(encoded: ByteArray): ByteArray
-    fun setCertificate(alias: String, crt: Certificate)
-    fun getCertificate(alias: String): Certificate?
-    fun deleteEntry(alias: String)
     fun encrypt(key: PublicKey, decrypted: ByteArray): ByteArray
     fun decrypt(key: PrivateKey, encrypted: ByteArray): ByteArray
     fun sign(key: PrivateKey, encoded: ByteArray): ByteArray
