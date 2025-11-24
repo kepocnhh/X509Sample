@@ -14,6 +14,8 @@ import androidx.activity.ComponentActivity
 import org.kepocnhh.x509.provider.Injection
 import java.security.PrivateKey
 import java.security.cert.Certificate
+import java.security.cert.X509Certificate
+import java.util.Date
 
 internal class MainActivity : ComponentActivity() {
     private fun ByteArray.hex(): String {
@@ -66,6 +68,17 @@ internal class MainActivity : ComponentActivity() {
                 title = "public key:",
                 value = injection.secrets.sha256(crt.publicKey.encoded).hex(),
                 typeface = Typeface.MONOSPACE,
+            )
+            check(crt is X509Certificate)
+            check(crt.notBefore.before(Date()))
+            check(crt.notAfter.after(Date()))
+            view.text(
+                title = "not before:",
+                value = crt.notBefore.toString(),
+            )
+            view.text(
+                title = "not after:",
+                value = crt.notAfter.toString(),
             )
             val payload = System.currentTimeMillis().toString()
             view.text(
